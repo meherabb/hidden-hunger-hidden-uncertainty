@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# LaTeX build artifacts (keep the source and the final compiled PDF only)
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.log
+paper/*.out
+paper/*.toc
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz
+
+# The official conference style file is proprietary formatting
+# infrastructure, not paper content -- download it fresh from the
+# workshop's official template rather than committing a copy here.
+paper/neurips_2026.sty
+
+# OS / editor cruft
+.DS_Store
+.vscode/
+*.swp

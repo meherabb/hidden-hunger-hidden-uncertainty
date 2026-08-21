@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "This work is under anonymous double-blind review. Please update this file with the full citation upon acceptance."
+title: "Hidden Hunger, Hidden Uncertainty: Auditing the Evidential Blind Spots of Climate-Nutrition Models"
+authors:
+  - name: "Anonymous"
+date-released: 2026-01-01
+license: MIT
+repository-code: "<add-repository-url-here>"
+abstract: >
+  Elevated atmospheric CO2 measurably lowers the protein, iron, and zinc
+  content of staple cereals, a phenomenon the plant science literature
+  calls hidden hunger. This work shows that the entire experimental
+  evidence base for this effect in cereal grains rests on 76 Fe/Zn/N
+  observations from just 11 independent field sites in 6 countries, none
+  in South Asia or Sub-Saharan Africa, and introduces evidential distance,
+  a training-free diagnostic that measures how far a target region's
+  climate covariates sit from this real experimental evidence.

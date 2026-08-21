@@ -1,0 +1,15 @@
+# Core dependencies. Versions below are minimum-compatible floors for the
+# features used (GroupKFold, RandomForestRegressor, NearestNeighbors from
+# scikit-learn; standard pandas/numpy/matplotlib operations), not an exact
+# pin captured from a specific run -- the notebook was developed and run in
+# Google Colab's default environment, which tracks recent stable releases.
+# Pin exact versions yourself (`pip freeze > requirements.lock.txt`) if you
+# need byte-for-byte environment reproducibility beyond the fixed random
+# seed already used throughout the pipeline.
+
+numpy>=1.24
+pandas>=1.5
+scikit-learn>=1.2
+matplotlib>=3.6
+openpyxl>=3.0     # required to read the GeoNutrition .xlsx files
+jupyter>=1.0       # to run notebooks/hidden_hunger_hidden_uncertainty.ipynb
