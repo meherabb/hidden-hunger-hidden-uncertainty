@@ -88,11 +88,11 @@ For a query region $x$ and the set $\mathcal{E}$ of real FACE evidence-site coor
 
 | | |
 |---|---|
-| ![Evidential gap](figures/fig1_evidential_gap.pdf) | **Fig. 1** — Where the real FACE evidence is vs. where dietary dependence is; the complete cereal Fe/Zn/N evidence base by country. |
-| ![Mismatch](figures/fig3_mismatch.pdf) | **Fig. 2** — Evidential-distance separation between FACE-internal sites and GeoNutrition ground truth; the predictor's honest cross-validated fit; ensemble uncertainty vs. evidential distance. |
-| ![Regional risk](figures/fig5_regional_risk.pdf) | **Fig. 3** — Real evidential distance vs. real dietary dependence, and the resulting regional risk ranking. |
-| ![Robustness](figures/fig4_robustness.pdf) | **App. Fig.** — The evidence-vs-dependence gap is stable across the diagnostic's only hyperparameter, $k$. |
-| ![Schematic](figures/fig2_method_schematic.pdf) | **App. Fig.** — The full evidential-distance audit pipeline. |
+| ![Evidential gap](figures/fig1_evidential_gap.png) | **Fig. 1** — Where the real FACE evidence is vs. where dietary dependence is; the complete cereal Fe/Zn/N evidence base by country. |
+| ![Mismatch](figures/fig3_mismatch.png) | **Fig. 2** — Evidential-distance separation between FACE-internal sites and GeoNutrition ground truth; the predictor's honest cross-validated fit; ensemble uncertainty vs. evidential distance. |
+| ![Regional risk](figures/fig5_regional_risk.png) | **Fig. 3** — Real evidential distance vs. real dietary dependence, and the resulting regional risk ranking. |
+| ![Robustness](figures/fig4_robustness.png) | **App. Fig.** — The evidence-vs-dependence gap is stable across the diagnostic's only hyperparameter, $k$. |
+| ![Schematic](figures/fig2_method_schematic.png) | **App. Fig.** — The full evidential-distance audit pipeline. |
 
 ## Citation
 
