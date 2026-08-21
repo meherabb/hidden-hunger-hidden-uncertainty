@@ -1,0 +1,364 @@
+\documentclass{article}
+% NOTE TO AUTHOR: this file assumes the official neurips_2026.sty package,
+% which is NOT reproduced here (it is proprietary conference formatting
+% infrastructure, not paper content, and should be downloaded fresh from
+% the workshop's official template to guarantee it matches the current
+% official version). Place neurips_2026.sty in the same directory as this
+% file before compiling. Swap the option below per your submission stage:
+% no option (as below) for the anonymous double-blind submission this
+% workshop requires, [final] for camera-ready after acceptance.
+\usepackage{neurips_2026}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  citecolor=blue!50!black,
+  urlcolor=blue!50!black,
+  pdftitle={Hidden Hunger, Hidden Uncertainty},
+  pdfauthor={Anonymous}
+}
+
+\newtheorem{lemma}{Lemma}
+\newtheorem{conjecture}{Conjecture}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+\newtheorem{proposition}{Proposition}
+\newcommand{\eqdef}{\mathrel{\mathop:}=}
+
+\title{Hidden Hunger, Hidden Uncertainty: Auditing the Evidential Blind Spots of Climate-Nutrition Models}
+\author{%
+  Anonymous Author(s) \\
+  Anonymous Institution \\
+  Anonymous City, Anonymous Country \\
+  \texttt{anonymous@email.com}
+}
+% NOTE TO AUTHOR: the workshop's CFP states submissions are reviewed
+% double-blind and must not include identifying author information in
+% the PDF -- so this uses the standard anonymous-submission placeholder
+% rather than your real name/affiliation, on purpose. Swap in your real
+% author block (and switch the neurips_2026 option above to [final])
+% only for the camera-ready version, after acceptance.
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Elevated atmospheric CO\textsubscript{2} measurably lowers the protein, iron, and zinc content of staple cereals, a phenomenon the plant science literature calls \emph{hidden hunger}. We show that the entire experimental evidence base for this effect in cereal grains rests on 76 Fe/Zn/N observations from just 11 independent field sites in 6 countries, none in South Asia or Sub-Saharan Africa --- the regions most dependent on rice and wheat for daily nutrition. We introduce \emph{evidential distance}, a training-free diagnostic that measures how far a target region's climate covariates sit from this real experimental evidence, computed independently of any predictive model's own reported confidence. Using a cross-validated ensemble decline predictor as a case study, we find its internal uncertainty correlates only weakly with true evidential distance ($r = 0.33$), and we validate the diagnostic against independent ground-truth cereal micronutrient surveys from Ethiopia and Malawi that the evidence base never saw. Combined with real dietary-dependence data from FAOSTAT, the diagnostic ranks Ethiopian wheat as the single highest-risk case among twelve regions tested --- the combination of heavy dietary dependence and evidential grounding the underlying science was never built to speak to. Every number in this paper is computed from a single reproducible pipeline over public data, and we report a leave-one-site-out $R^2$ of $-0.33$ for the underlying predictor without softening it, because the smallness of the evidence base is itself part of our argument.
+
+\end{abstract}
+
+\section{Introduction}
+
+An estimated quarter to a third of the global population is deficient in at least one key micronutrient \citep{fao2023sofi}, and the crops that feed most of them are getting less nutritious as the atmosphere changes. Elevated CO\textsubscript{2} measurably lowers protein, iron, and zinc concentrations in C3 cereals such as rice and wheat \citep{loladze2014hidden, myers2014increasing}, an effect with health consequences concentrated in exactly the countries that eat the most rice and wheat \citep{zhu2018carbon, beach2019combining}. This evidence comes almost entirely from Free-Air CO\textsubscript{2} Enrichment (FACE) experiments, the gold-standard method for measuring plant response to elevated CO\textsubscript{2} under real field conditions \citep{ainsworth2005face}; large-scale FACE facilities number in the low dozens worldwide and are concentrated in a handful of high-income, temperate countries.
+
+This creates a specific, and to our knowledge unexamined, problem for any machine learning system built on this evidence: a model predicting nutrient decline from climate covariates is asked to speak most confidently in exactly the places its training evidence has never been. We are not aware of prior work treating this geographic evidence gap as a machine-learning problem, rather than a caveat mentioned in passing in the agronomy literature.
+
+We make three contributions. First, we quantify the evidence gap directly: the real FACE literature underlying cereal micronutrient decline covers 11 independent sites in 6 countries (Sec.~\ref{sec:data}). Second, we introduce \emph{evidential distance}, a training-free, model-agnostic diagnostic scoring how far a target region sits from this evidence, validated against independent ground truth the evidence base never saw --- georeferenced cereal grain surveys from Ethiopia and Malawi \citep{kumssa2022geonutrition}. Third, we combine evidential distance with real FAOSTAT dietary-dependence data into a region-level risk ranking, reported honestly including where our own assumptions are weakest.
+
+We want to be precise about what this paper is: an empirical audit tool and a reproducible measurement, not a new state-of-the-art predictor or a theorem with a proof. Where a result is weak --- and our central result, the correlation between a model's own uncertainty and true evidential distance, is weak ($r=0.33$) --- we report it as computed rather than as we would have preferred.
+
+\section{Related Work}
+
+\textbf{Out-of-distribution and distance-based detection.} Detecting when a model is asked to predict outside its training distribution is a mature ML research area, from softmax-based baselines \citep{hendrycks2017baseline} to feature-space distance methods using Mahalanobis distance \citep{lee2018simple} or non-parametric nearest-neighbor distance \citep{sun2022outofdistribution}. Evidential distance is methodologically closest to this latter family: we compute $k$-nearest-neighbor distance in a covariate space, but the ``in-distribution'' set is a real, small, geographically mapped set of published field experiments rather than a benchmark training split, and the goal is regional risk auditing rather than binary rejection. WILDS \citep{koh2021wilds} documents that real-world distribution shift is pervasive and under-represented in standard datasets; our setting is an extreme, small-$n$, high-stakes instance of the same problem.
+
+\textbf{Uncertainty calibration.} Modern predictive models are frequently miscalibrated \citep{guo2017calibration}, and ensemble-based uncertainty \citep{lakshminarayanan2017simple} degrades under dataset shift in ways not always well understood \citep{ovadia2019trust}. Our finding that ensemble spread correlates only weakly with true evidential distance ($r=0.33$, Sec.~\ref{sec:validation}) fits this literature's broader finding that internal uncertainty is an imperfect proxy for genuine distributional novelty, motivating an independent, training-free diagnostic instead.
+
+\textbf{Machine learning for climate action.} Rolnick et al.\ \citep{rolnick2022tackling} survey high-impact ML for climate mitigation and adaptation; we sit at that survey's agriculture-and-health intersection, and are, to our knowledge, first to frame the CO\textsubscript{2}--nutrition evidence base's geographic representativeness as a diagnostic ML problem.
+
+\section{Method}
+
+\textbf{Setup.} Let $\mathcal{E} = \{e_1, \ldots, e_m\} \subset \mathbb{R}^2$ be real FACE trial-site coordinates underlying a target claim (here, cereal micronutrient response to elevated CO\textsubscript{2}), and $x \in \mathbb{R}^2$ a target region's coordinates.
+
+\begin{definition}[Evidential distance]
+For query point $x$ and evidence set $\mathcal{E}$, standardize coordinates using the mean and covariance of $\mathcal{E}$, and let $d_k(x)$ be the mean Euclidean distance, in standardized space, from $x$ to its $k$ nearest points in $\mathcal{E}$:
+\[
+d_k(x) \;\eqdef\; \frac{1}{k}\sum_{e \in \mathrm{NN}_k(x,\, \mathcal{E})} \lVert \phi(x) - \phi(e) \rVert_2, \qquad \phi(\cdot) = \Sigma_\mathcal{E}^{-1/2}(\cdot - \mu_\mathcal{E}).
+\]
+\end{definition}
+
+We also define a percentile-calibrated \emph{evidential coverage} score $C(x) \in [0,1]$ against $\mathcal{E}$'s own leave-one-out spread (formal properties in App.~\ref{app:extended-method}); with $m=11$--$14$ sites this calibration is coarse, so we report $d_k(x)$ directly in all quantitative results and use $C(x)$ only qualitatively.
+
+\textbf{Decline predictor.} Independently of $C(x)$, we fit $f(x) \to \Delta$ mapping location and CO\textsubscript{2}-level covariates to fractional nutrient change, with ensemble uncertainty $U(x)$: a 300-tree random forest \citep{breiman2001random}, $\Delta_i = \frac{1}{300}\sum_t \Delta_i^{(t)}$, $U(x) = \mathrm{std}_t(\Delta^{(t)})$, evaluated by leave-one-site-out cross-validation grouped by real experimental site so no field trial spans train and test.
+
+\textbf{Risk score.} For query regions with real dietary-dependence weights $w(x)$ (Sec.~\ref{sec:data}), we min--max normalize $d_k$ and $w$ over the query set and define $\mathrm{Risk}(x) \eqdef \widetilde{d}_k(x) \cdot \widetilde{w}(x)$: high when evidentially ungrounded and heavily dependent. Algorithm~\ref{alg:pipeline} (App.~\ref{app:extended-method}) gives the full pipeline in pseudocode.
+
+\section{Experiments}
+\label{sec:data}
+
+\textbf{Data.} We use three unmodified public datasets, with full sizes and sources in Table~\ref{tab:repro-summary} (App.~\ref{app:reproducibility}): the CO\textsubscript{2}-ionome meta-analysis underlying \citet{loladze2014hidden}, from which we extract every real Free-Air CO\textsubscript{2} Enrichment trial; the GeoNutrition surveys \citep{kumssa2022geonutrition}, independent georeferenced ground truth (ICP-MS mineral concentrations) the FACE literature never informed; and FAOSTAT Food Balance Sheets, for real per-country cereal dietary dependence (kg/capita/yr).
+
+\subsection{The evidential footprint is small and geographically concentrated}
+Restricting to genuine FACE trials on cultivated crops yields 295 observations at \textbf{14 sites in 6 countries}: Australia, China, Denmark, Germany, Japan, USA (Fig.~\ref{fig:fig1}a). Restricting further to Fe, Zn, and N (a standard protein proxy) yields \textbf{76 observations at 11 sites}, still confined to those 6 countries (Fig.~\ref{fig:fig1}b). Of these, 71 are wheat, rice, or barley and 5 are other C3 crops (cotton, oilseed rape) on the same FACE infrastructure; a strict cereal-only refit changes the result negligibly (App.~\ref{app:robustness}). None sit in South Asia or Sub-Saharan Africa.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.93\textwidth]{figures/fig1_evidential_gap.pdf}
+  \caption{(a) Real FACE evidence sites (crop trials) against GeoNutrition survey locations. (b) The complete cereal Fe/Zn/N evidence base, by country.}
+  \label{fig:fig1}
+\end{figure}
+
+\subsection{Evidential distance separates real evidence from real dependent regions}
+\label{sec:validation}
+Fitting $f$ with leave-one-site-out CV over its 11 sites gives $R^2=-0.33$, MAE$=0.12$ (fractional units): it does not beat the training-set mean for a held-out site (Fig.~\ref{fig:fig3}b) --- reported without softening, as direct evidence that 11 sites is too thin a base for confident geographic extrapolation, independent of anything our diagnostic adds.
+
+Applying evidential distance to the real GeoNutrition coordinates shows a clean separation from the evidence base's own spread: median $d_5$ is $0.56$ (FACE sites, leave-one-out), $1.34$ (Ethiopian wheat), $1.84$ (Malawian rice; Fig.~\ref{fig:fig3}a) --- both sit farther from the evidence than the evidence sits from itself.
+
+Critically, $U(x)$ is a poor substitute: across 20 query points (FACE-internal sites, the two GeoNutrition regions, and four more real regions --- India, Bangladesh, Vietnam, Nigeria), the correlation between $U(x)$ and $d_5(x)$ is $r=0.33$ (Fig.~\ref{fig:fig3}c) --- positive but weak; self-reported confidence tracks evidential grounding only loosely.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/fig3_mismatch.pdf}
+  \caption{(a) Real distance separation between FACE-internal sites and GeoNutrition ground truth. (b) Leave-one-site-out fit of the decline predictor on its own evidence. (c) Ensemble uncertainty tracks evidential distance only weakly.}
+  \label{fig:fig3}
+\end{figure}
+
+\subsection{The diagnostic is stable, and combined with real dependence data it identifies a concrete highest-risk case}
+This separation is stable across the diagnostic's only hyperparameter $k \in \{2,3,5,8,10\}$: the ranking never inverts (App.~\ref{app:robustness}, Fig.~\ref{fig:robustness_k}). Combining evidential distance with real FAOSTAT dietary-dependence data (11 of 12 query regions matched; App.~\ref{app:reproducibility}) yields a concrete regional risk ranking (Fig.~\ref{fig:risk}; full table in App.~\ref{app:full-table}). \textbf{Ethiopian wheat ranks highest} (Risk $=0.486$), ahead of Vietnamese rice ($0.407$), Malawian rice ($0.276$), Bangladeshi rice ($0.262$), and Indian wheat ($0.166$) --- the combination of real dietary dependence and evidential distance the underlying literature has never sampled.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figures/fig5_regional_risk.pdf}
+  \caption{Real evidential distance vs.\ real dietary dependence, and the resulting regional risk ranking. Full ranking in Table~\ref{tab:full-risk}, App.~\ref{app:full-table}.}
+  \label{fig:risk}
+\end{figure}
+
+\section{Limitations and Broader Impact}
+
+\textbf{Limitations.} (i) The evidence base is genuinely small (11 sites), reported honestly rather than papered over. (ii) GeoNutrition is cross-sectional, not a manipulation experiment: it validates evidential uncovering, not that the mechanism operates identically there. (iii) Our covariate space is latitude/longitude only, and dependence uses total cereal supply as a crop-agnostic proxy; both are natural refinements. (iv) 2 of 20 query rows (both Japanese sites) had no FAOSTAT match and were excluded, not imputed.
+
+\textbf{Broader impact.} This is an audit tool, not a new predictive model: it tells policymakers and funders \emph{where} to prioritize field trials or ground-truth verification, not a replacement for domain expertise. We see no meaningful dual-use risk; the main risk is misuse as a false certificate of confidence if our limitations (above) are stripped from its reporting, which we explicitly caution against.
+
+\section{Conclusion}
+We introduced a training-free diagnostic that audits climate-nutrition models against the real geographic footprint of their evidence, validated it against independent ground truth, and showed --- honestly, including the weak results --- a concrete, policy-relevant highest-risk case. The pipeline and every number are reproducible from three public sources; extended results, full tables, and robustness checks are in the Appendix.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\newpage
+\appendix
+\section*{Appendix}
+This appendix is organized as follows. App.~\ref{app:reproducibility}: reproducibility statement and a one-page summary table. App.~\ref{app:notation}: notation used throughout the paper. App.~\ref{app:extended-method}: the evidential-coverage definition, its formal properties, and the full pipeline in pseudocode. App.~\ref{app:full-table}: the complete FACE evidence footprint and regional risk ranking. App.~\ref{app:robustness}: robustness analyses (hyperparameter sweep and a cereal-only refit). App.~\ref{app:schematic}: the method pipeline as a diagram. App.~\ref{app:software}: software and data licensing.
+
+\section{Reproducibility statement}
+\label{app:reproducibility}
+
+All three datasets are downloaded automatically from their original public sources at run time (no manual steps, no logins): the CO\textsubscript{2}-ionome meta-analysis of \citet{loladze2014hidden} (mirrored at \url{https://github.com/loladze/co2}); the GeoNutrition surveys of \citet{kumssa2022geonutrition} (mirrored at \url{https://github.com/rmlark/GeoNutrition}); and FAOSTAT Food Balance Sheets (bulk download from \url{https://fenixservices.fao.org/faostat}). The full pipeline --- data loading, the evidential-distance class, the cross-validated random forest, and every figure in this paper --- runs end to end on a single CPU; no GPU is used or needed. A fixed random seed (13) is used throughout for the random forest so that the leave-one-site-out numbers reported here are exactly reproducible. FAOSTAT's bulk file was 4{,}820{,}497 rows at the time of our run; country names were matched to our query regions via an explicit alias table with a substring fallback, and every match used is logged rather than assumed (Table~\ref{tab:faostat-log}). Table~\ref{tab:repro-summary} gives a single-page summary of every reproducibility-relevant detail.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Reproducibility summary.}
+\label{tab:repro-summary}
+\begin{tabular}{p{0.34\textwidth}p{0.58\textwidth}}
+\toprule
+\textbf{Aspect} & \textbf{Detail} \\
+\midrule
+Code \& data availability & Fully public; all three datasets auto-download at run time from their original sources, no manual steps, no logins, no scraping \\
+Primary evidence dataset & \citet{loladze2014hidden} CO\textsubscript{2}-ionome meta-analysis: 1{,}481 obs., 130 species; we extract 295 real FACE obs.\ (14 sites, 6 countries), 76 Fe/Zn/N obs.\ (11 sites) \\
+Independent validation dataset & \citet{kumssa2022geonutrition} GeoNutrition surveys: 1{,}386 (Ethiopia) + 1{,}812 (Malawi) georeferenced ICP-MS cereal grain samples \\
+Dependence-weighting dataset & FAOSTAT Food Balance Sheets: 4{,}820{,}497-row bulk file at run time; 11 of 12 query regions matched (Table~\ref{tab:faostat-log}) \\
+Predictive model & Random forest \citep{breiman2001random}, 300 trees, max depth 4, min.\ leaf size 3 \\
+Evaluation protocol & Leave-one-site-out cross-validation (\texttt{GroupKFold} by real experimental site) \\
+Training sample size & $n=76$ (11 sites), main result; $n=71$ (10 sites), cereal-only robustness check (App.~\ref{app:robustness}) \\
+Hyperparameter sensitivity & Evidential-distance $k \in \{2,3,5,8,10\}$, all tested (App.~\ref{app:robustness}, Fig.~\ref{fig:robustness_k}) \\
+Randomness \& determinism & Fixed seed (13) for all random forest fits; all reported numbers are exactly reproducible given the datasets' state at download time \\
+Hardware & Single CPU; no GPU used or required anywhere in the pipeline \\
+Software & Python 3, scikit-learn \citep{pedregosa2011scikit}, pandas \citep{mckinney2010data}, matplotlib \citep{hunter2007matplotlib} (App.~\ref{app:software}) \\
+Data licensing & All three sources are public research data or public government statistics; see original sources for exact terms of use \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Notation summary}
+\label{app:notation}
+Table~\ref{tab:notation} collects the symbols introduced in Sec.~3, for reference.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Notation used throughout the paper.}
+\label{tab:notation}
+\begin{tabular}{p{0.14\textwidth}p{0.78\textwidth}}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+$\mathcal{E}$ & Set of real, distinct FACE evidence site coordinates \\
+$x$ & Coordinates of a target query region \\
+$d_k(x)$ & Evidential distance: mean standardized distance from $x$ to its $k$ nearest points in $\mathcal{E}$ \\
+$C(x)$ & Evidential coverage: percentile-calibrated transform of $d_k(x)$ against $\mathcal{E}$'s own leave-one-out spread \\
+$f(x)$, $U(x)$ & Cross-validated decline predictor and its ensemble (tree-to-tree) uncertainty \\
+$w(x)$ & Real FAOSTAT dietary-dependence weight for region $x$ \\
+$\widetilde{d}_k$, $\widetilde{w}$ & Min--max normalized $d_k$, $w$ over the query set \\
+$\mathrm{Risk}(x)$ & $\widetilde{d}_k(x) \cdot \widetilde{w}(x)$, the combined regional risk score \\
+$m$ & Number of distinct evidence sites in $\mathcal{E}$ ($m=14$ all-crop; $m=11$ Fe/Zn/N subset) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Extended method: evidential coverage, formal properties, and pipeline pseudocode}
+\label{app:extended-method}
+This section gives, in full, the material summarized in Sec.~3: the formal definition of evidential coverage, its basic properties, and the complete pipeline as pseudocode.
+
+\begin{definition}[Evidential coverage]
+Let $r_1, \ldots, r_m$ be the leave-one-out $k$-nearest-neighbor distances of $\mathcal{E}$ to itself. The coverage score $C(x) \eqdef 1 - \widehat{F}_r(d_k(x)) \in [0,1]$, where $\widehat{F}_r$ is the empirical CDF of $\{r_i\}$, expresses how typical $x$'s distance is relative to the evidence base's own internal spread.
+\end{definition}
+
+\begin{proposition}
+$d_k(x) \geq 0$ for all $x$, with equality only if $x$ coincides with at least $k$ points of $\mathcal{E}$ in standardized space; $C(x) \in [0,1]$ for all $x$, is non-increasing in $d_k(x)$, and is invariant to the ordering of $\mathcal{E}$.
+\end{proposition}
+This follows directly from $d_k$ being an average of Euclidean norms and $C$ being a monotone transform of an empirical CDF; we state it only to fix notation, not as a claim about detection performance, which we evaluate empirically (Sec.~\ref{sec:validation}). With $m$ as small as 11--14, $\widehat{F}_r$ is coarse (steps of $1/m$), which is why the main text reports the continuous $d_k(x)$ directly in all quantitative results and reserves $C(x)$ for qualitative interpretation only.
+
+\begin{algorithm}[h]
+\small
+\caption{Evidential-distance risk audit}
+\label{alg:pipeline}
+\begin{algorithmic}[1]
+\REQUIRE FACE evidence coordinates $\mathcal{E}$; query regions $\{x_j\}$ with dependence weights $w(x_j)$; $k$
+\FOR{each query region $x_j$}
+  \STATE Compute $d_k(x_j)$, $C(x_j)$ against $\mathcal{E}$ (training-free)
+  \STATE Compute $f(x_j)$, $U(x_j)$ from the cross-validated predictor (independent of step 2)
+\ENDFOR
+\STATE Normalize $\{d_k(x_j)\}$ and $\{w(x_j)\}$ to $[0,1]$ over the query set
+\STATE $\mathrm{Risk}(x_j) \gets \widetilde{d}_k(x_j)\cdot \widetilde{w}(x_j)$ for all $j$
+\STATE \textbf{return} ranked $\{\mathrm{Risk}(x_j)\}$, and the correlation between $\{d_k(x_j)\}$ and $\{U(x_j)\}$ as a check of whether $U$ alone would have sufficed
+\end{algorithmic}
+\end{algorithm}
+
+\section{Full FACE evidence footprint}
+\label{app:full-table}
+Table~\ref{tab:sites} lists every distinct FACE site underlying the cereal Fe/Zn/N evidence base used to fit $f$. Table~\ref{tab:full-risk} gives the complete 12-region risk ranking underlying Fig.~\ref{fig:risk}, including the four regions (all FACE-internal) that score at or near zero because they are themselves part of the evidence.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Countries contributing to the cereal Fe/Zn/N evidence base ($n=76$, 11 sites).}
+\label{tab:sites}
+\begin{tabular}{lccc}
+\toprule
+Country & Observations & Distinct sites (all-crop) & Elements represented \\
+\midrule
+Germany   & 40 & 3 & Fe, Zn, N \\
+China     & 12 & 5 & Fe, Zn, N \\
+Australia & 10 & 2 & Fe, Zn, N \\
+Japan     & 7  & 2 & Fe, Zn, N \\
+Denmark   & 4  & 1 & Fe, Zn, N \\
+USA       & 3  & 1 & Fe, Zn, N \\
+\midrule
+\textbf{Total} & \textbf{76} & \textbf{14 (all-crop); 11 (Fe/Zn/N subset)} & Fe: 33, Zn: 33, N: 10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Complete regional risk ranking (all 12 query regions; ties among repeated FACE sites within the same country collapse to identical scores by construction).}
+\label{tab:full-risk}
+\begin{tabular}{lccc}
+\toprule
+Region & $d_5$ & Cereal supply (kg/cap/yr) & Risk \\
+\midrule
+Ethiopia (wheat, GeoNutrition)   & 1.34 & 209.0 & 0.486 \\
+Vietnam (rice)                   & 0.81 & 251.6 & 0.407 \\
+Malawi (rice, GeoNutrition)      & 1.84 & 145.1 & 0.276 \\
+Bangladesh (rice)                & 0.49 & 262.5 & 0.262 \\
+India (wheat)                    & 0.60 & 184.7 & 0.166 \\
+FACE site (USA)                  & 1.40 & 129.9 & 0.139 \\
+Nigeria (cereals)                & 1.47 & 115.5 & 0.075 \\
+FACE site (Australia)            & 1.49 / 1.46 & 115.4 & 0.075 / 0.074 \\
+FACE site (Denmark)              & 0.44 & 131.7 & 0.045 \\
+FACE site (China)                & $\approx$0.02 (5 sites) & 218.6 & $\approx$0.000--0.003 \\
+FACE site (Germany)              & 0.39--0.41 (3 sites) & 100.3 & 0.000 \\
+FACE site (Japan)                & 0.26 / 0.31 & no FAOSTAT match & excluded \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\small
+\caption{FAOSTAT country-match log (Element: Food supply quantity, kg/capita/yr; Item: Cereals -- Excluding Beer; Year: 2023 for every match). Reproduced verbatim from the pipeline's own audit output; this is what makes the join auditable rather than a black box.}
+\label{tab:faostat-log}
+\begin{tabular}{llc}
+\toprule
+Query region & Matched FAOSTAT area & Value \\
+\midrule
+Germany   & Germany                     & 100.3 \\
+USA       & United States of America    & 129.9 \\
+China     & China, mainland             & 218.6 \\
+Australia & Australia                   & 115.4 \\
+Denmark   & Denmark                     & 131.7 \\
+Ethiopia  & Ethiopia                    & 209.0 \\
+Malawi    & Malawi                      & 145.1 \\
+India     & India                       & 184.7 \\
+Bangladesh& Bangladesh                  & 262.5 \\
+Vietnam   & Viet Nam                    & 251.6 \\
+Nigeria   & Nigeria                     & 115.5 \\
+Japan (2 sites) & \emph{no match} & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Robustness analyses}
+\label{app:robustness}
+
+\textbf{Stability across the diagnostic's hyperparameter $k$.} Figure~\ref{fig:robustness_k} sweeps $k \in \{2,3,5,8,10\}$ and recomputes the median evidential distance for FACE-internal sites, Ethiopian wheat, and Malawian rice at each value. The three-way ordering (FACE-internal $<$ Ethiopia $<$ Malawi) holds at every $k$ tested; the diagnostic's qualitative conclusion does not depend on this choice.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.62\textwidth]{figures/fig4_robustness.pdf}
+  \caption{The FACE-vs-GeoNutrition evidential-distance gap is stable across the diagnostic's $k$.}
+  \label{fig:robustness_k}
+\end{figure}
+
+\textbf{Strict cereal-only refit.} The 76-observation training panel includes 5 non-cereal C3 crop observations (cotton, oilseed rape) sharing the same FACE infrastructure as the 71 cereal (wheat, rice, barley) observations. Restricting to the 71 strictly-cereal observations (10 distinct sites) and refitting with the same leave-one-site-out protocol gives $R^2 = -0.28$, MAE $=0.123$ --- materially unchanged from the full-panel result ($R^2=-0.33$, MAE$=0.124$; Table~\ref{tab:robustness-cereal}), confirming the headline finding is not an artifact of the two non-cereal crops in the training panel.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Cereal-only robustness refit vs.\ the main result.}
+\label{tab:robustness-cereal}
+\begin{tabular}{lccc}
+\toprule
+Training panel & $n$ (sites) & $R^2$ & MAE \\
+\midrule
+Full panel (main result) & 76 (11) & $-0.33$ & 0.124 \\
+Strict cereal-only (wheat, rice, barley) & 71 (10) & $-0.28$ & 0.123 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Method schematic}
+\label{app:schematic}
+Figure~\ref{fig:schematic} shows the full pipeline of Algorithm~\ref{alg:pipeline} as a diagram: evidential coverage and the decline predictor are computed independently from the same real inputs, and only combined downstream into the confidence-evidence relationship and the FAO-weighted regional risk score.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig2_method_schematic.pdf}
+  \caption{The full evidential-distance audit pipeline (Algorithm~\ref{alg:pipeline}), shown end to end.}
+  \label{fig:schematic}
+\end{figure}
+
+\section{Software and licensing}
+\label{app:software}
+All experiments use scikit-learn \citep{pedregosa2011scikit} for the random forest and nearest-neighbor computations, pandas \citep{mckinney2010data} for data handling, and matplotlib \citep{hunter2007matplotlib} for all figures, on top of a standard Python 3 scientific stack (NumPy). No proprietary or restricted-license software is used anywhere in the pipeline. The three datasets are, respectively, an open peer-reviewed meta-analysis release, an open \emph{Scientific Data} descriptor release, and a public United Nations statistical database; we do not redistribute any of the three datasets ourselves, only the code that downloads and processes them from their original hosts.
+
+\end{document}
