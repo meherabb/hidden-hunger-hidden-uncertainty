@@ -59,7 +59,7 @@ Full 12-region ranking: [`results/regional_risk_ranking.csv`](results/regional_r
 └── README.md
 ```
 
-## Data sources (all public, all auto-downloaded)
+## Data sources
 
 The notebook downloads all three datasets directly from their original hosts at run time — no manual steps, no logins, no scraping:
 
