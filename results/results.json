@@ -1,0 +1,31 @@
+{
+  "faostat_available": true,
+  "n_face_crop_obs": 295,
+  "n_face_crop_sites": 14,
+  "face_countries": [
+    "Australia",
+    "China",
+    "Denmark",
+    "Germany",
+    "Japan",
+    "USA"
+  ],
+  "n_cereal_micronutrient_obs": 76,
+  "n_cereal_micronutrient_sites": 11,
+  "cv_r2_leave_one_site_out": -0.3324915118972984,
+  "cv_mae_leave_one_site_out": 0.12352926400675991,
+  "cv_n_sites": 11,
+  "median_raw_distance_face_internal": 0.5588386263183834,
+  "median_raw_distance_ethiopia_wheat": 1.3446068297728315,
+  "median_raw_distance_malawi_rice": 1.8443230724876056,
+  "robustness_k_values": [
+    2,
+    3,
+    5,
+    8,
+    10
+  ],
+  "faostat_n_unmatched_regions": 2,
+  "fig5_used_real_faostat_weights": true,
+  "distance_vs_pred_std_correlation": 0.32917964523539067
+}
